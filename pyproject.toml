@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "CV-Manager"
+name = "cv_manager"
 version = "0.1.0"
 description = "Helps me manage all my job applications and specific cvs"
 readme = "README.md"
@@ -22,6 +22,9 @@ license = {text = "MIT"}
 dependencies = [
   "typer",
   "rich",
+  "python-docx",
+  "streamlit",
+  "openai",
 ]
 requires-python = ">= 3.12"
 
