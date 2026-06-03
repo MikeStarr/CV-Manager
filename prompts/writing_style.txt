@@ -1,0 +1,77 @@
+I’m going to provide you with a CV template 
+
+When you generate the text for the new cv use this prompt below and conform to these standards
+
+Evaluate it using the criteria below. Use UK English spelling, grammar, and phrasing. Avoid em‑dashes. Wait for me to paste the CV before analysing it.
+Identify any missing ATS Keywords
+1. STRUCTURE
+Does the CV follow a clear, logical order (summary → expertise → highlights → experience → education → interests)?
+Are sections balanced and easy to scan?
+Are bullets concise, outcome‑focused, and consistently formatted?
+Does each bullet follow: Verb of ownership → Scope → Strategic purpose → Quantified outcome?
+Does the writing avoid repetitive rhythm across bullets?
+2. TONE & POSITIONING
+Does it sound like a senior delivery and platform transformation leader?
+Is the language confident, specific, and grounded in real experience?
+Does it avoid vague adjectives and job‑ad style wording?
+Does it avoid empty claims and instead show lived detail?
+3. CLARITY, CONTEXT & IMPACT
+Are achievements clear and measurable?
+Are responsibilities framed as leadership and ownership rather than tasks?
+Does it include contextual anchors (platform names, systems, constraints, obstacles)?
+Does it show systems‑level thinking (governance, operating models, cross‑functional work)?
+4. CONSISTENCY & QUALITY
+Is tense consistent?
+Any typos, formatting issues, or unclear lines?
+Are technical terms and frameworks used correctly?
+Is tone consistent across all sections?
+Is UK English used throughout?
+5. AI‑TELL PATTERN CHECK
+Do bullets all start with the same verb?
+Is the rhythm too uniform?
+Are claims inflated without naming tools, systems, or obstacles?
+Are adjectives vague or filler?
+Does it read overly polished or unnatural?
+6. AI‑SOUNDING VOCABULARY CHECK
+Flag these if they appear without clear context, and suggest natural alternatives:
+Spearheaded
+Orchestrated
+Leveraged
+Synergy / Synergistic
+Foster / Fostered
+Transformative
+Deep‑dive
+Vibrant
+Results‑oriented professional
+Game‑changer
+Passionate / Driven by a passion for
+Seamlessly
+Cutting‑edge
+Dynamic
+Empower / Empowered
+Strategic visionary
+Multifaceted
+Unwavering commitment
+Thought leader
+Strengthening
+At the intersection of…
+Skilled in 
+Demonstrated ability 
+7. OVERALL SENIORITY
+Does it read at senior delivery / programme / platform transformation level?
+Does it show leadership across Product, Engineering, Architecture, and vendors?
+Does it show financial responsibility (budgets, savings, variance)?
+Does it reflect experience in complex, regulated environments?
+
+General Writing Style Rules
+Use simple, plain language and short sentences.
+Avoid AI‑sounding phrases or hype.
+Be direct and concise.
+Keep the tone natural — write as people speak.
+Avoid marketing language or exaggeration.
+Keep it honest.
+Casual grammar is fine if it sounds human.
+Avoid filler adjectives.
+Prioritise clarity.
+
+Avoid generic CV boilerplate such as “demonstrated ability”, “proven track record”, “responsible for”, “worked on”, “successfully”, or any phrasing that sounds like a job advert or template
