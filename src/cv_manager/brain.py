@@ -313,7 +313,6 @@ class CVBrain:
                 found = True
             # 3. Check if there's a highly similar paragraph (>= 80% similarity)
             if not found and len(orig_norm) >= 15:
-                import difflib
                 for p_norm in cv_paras_norm:
                     if difflib.SequenceMatcher(None, orig_norm, p_norm).ratio() >= 0.80:
                         found = True
