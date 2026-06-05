@@ -39,11 +39,11 @@ def brain(monkeypatch):
     brain = CVBrain()
     # Patch the client so no real HTTP request is made.
     def _create(*_, **__):
-        return _mock_response(
-            json.dumps([
-                {"original_text": "I know Python", "new_text": "Proficient in Python"},
-                {"original_text": "FastAPI", "new_text": "Experience with FastAPI"},
-            ])
+        content = json.dumps([
+            {"original_text": "I know Python", "new_text": "Proficient in Python"},
+            {"original_text": "FastAPI", "new_text": "Experience with FastAPI"},
+        ])
+        return _mock_response(content)
 
     monkeypatch.setattr(brain.client.chat.completions, "create", _create)
     return brain

@@ -36,6 +36,7 @@ Does it read overly polished or unnatural?
 Flag these if they appear without clear context, and suggest natural alternatives:
 Spearheaded
 Orchestrated
+Orchestrates 
 Leveraged
 Synergy / Synergistic
 Foster / Fostered
