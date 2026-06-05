@@ -120,6 +120,40 @@ def test_get_cv_files(tmp_path, monkeypatch):
     assert sorted(files) == ["template1.docx"]
 
 
+def test_get_ats_keywords(mocker):
+    """Verify that get_ats_keywords initializes CVBrain and extracts keywords correctly."""
+
+    # Clear streamlit cache to prevent flakiness between test runs
+    if hasattr(app.get_ats_keywords, "clear"):
+        app.get_ats_keywords.clear()
+
+    mock_brain_class = mocker.patch("src.cv_manager.app.CVBrain")
+    mock_brain_instance = mocker.MagicMock()
+    mock_brain_class.return_value = mock_brain_instance
+
+    expected_result = {"technical_skills": ["Python"]}
+    mock_brain_instance.extract_ats_keywords.return_value = expected_result
+
+    result = app.get_ats_keywords(
+        job_spec="Job spec text",
+        base_url="http://test",
+        api_key="test-key",
+        model="test-model",
+        timeout=10.0,
+        provider="Local"
+    )
+
+    mock_brain_class.assert_called_once_with(
+        api_key="test-key",
+        base_url="http://test",
+        model="test-model",
+        timeout=10.0,
+        provider="Local"
+    )
+    mock_brain_instance.extract_ats_keywords.assert_called_once_with("Job spec text")
+    assert result == expected_result
+
+
 # The ``load_registry`` helper is defined inside :func:`main` and therefore not
 # importable from the module namespace.  Testing it directly would require
 # executing the entire UI flow, which is outside the scope of a unit test.
