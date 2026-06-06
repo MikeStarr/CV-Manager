@@ -20,11 +20,6 @@ import sys
 import types
 from unittest.mock import MagicMock
 
-# ``docx`` is an optional dependency.  Importing the real library would pull in a
-# large binary package which is unnecessary for unit tests, so we provide a very
-# small stub that satisfies the attribute access performed by ``app.get_docx_text``.
-sys.modules.setdefault("docx", types.SimpleNamespace(Document=lambda *a, **k: None))
-
 # Import the module under test.  The package is added to ``sys.path`` by the
 # application itself, but importing it directly keeps the intent clear.
 import src.cv_manager.app as app

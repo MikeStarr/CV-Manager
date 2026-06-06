@@ -15,10 +15,7 @@ on:
 permissions: {}
 
 concurrency:
-  # Unique group per workflow + (PR number OR branch/ref)
-  # Ensures manual dispatches don't cancel each other, but PRs do.
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.head_ref || github.ref }}
-  # Only cancel in-progress runs for PRs, not for push/main or manual dispatches
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -32,9 +29,9 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
-
       - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
-
+        with:
+          python-version: "3.13"
       - name: Ruff format check
         run: uv run ruff format --check .
       - name: Ruff lint
@@ -50,9 +47,9 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
-
       - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
-
+        with:
+          python-version: "3.13"
       - name: Type check with ty
         run: uv run ty check .
 
@@ -70,11 +67,13 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
-
       - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
-
+        with:
+          python-version: ${{ matrix.python-version }}
       - name: Run tests with coverage
-        run: uv run --python=${{ matrix.python-version }} coverage run -m pytest
+        env:
+          COVERAGE_FILE: .coverage.${{ matrix.python-version }}
+        run: uv run coverage run -m pytest
       - name: Upload coverage data
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
@@ -93,9 +92,9 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
-
       - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
-
+        with:
+          python-version: "3.13"
       - name: Download coverage data
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -108,7 +107,8 @@ jobs:
           echo '## Coverage Report' >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           uv run coverage report | tee -a $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo '
+```' >> $GITHUB_STEP_SUMMARY
 
   all-checks-pass:
     name: All checks pass
@@ -116,8 +116,10 @@ jobs:
     needs: [lint, type-check, test, coverage]
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
     steps:
       - name: Check job results
         uses: re-actors/alls-green@05ac9388f0aebcb5727afa17fcccfecd6f8ec5fe # v1.2.2
         with:
-          jobs: ${{ toJSON(needs) }}   
+          jobs: ${{ toJSON(needs) }}
