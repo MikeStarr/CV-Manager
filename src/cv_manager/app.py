@@ -60,21 +60,14 @@ def get_cv_files():
     return [f for f in os.listdir(CV_DIR) if f.endswith(".docx") and not f.startswith("~")]
 
 
-# Cached function to extract ATS keywords to prevent redundant LLM calls
-@st.cache_data(show_spinner="Running ATS Analysis on Job Specification...")
-def get_ats_keywords(job_spec: str, base_url: str, api_key: str, model: str, timeout: float, provider: str) -> dict:
-    brain = CVBrain(api_key=api_key or None, base_url=base_url, model=model, timeout=timeout, provider=provider)
-    return brain.extract_ats_keywords(job_spec)
-
-
-def run_llm_threaded(brain, job_spec, cv_structure, cv_content, missing_keywords):
+def run_llm_threaded(brain, job_spec, cv_structure, cv_content):
     """Runs the LLM call in a background thread and returns the result or raises the exception."""
     res_queue = queue.Queue()
 
     def worker():
         try:
             res = brain.generate_tailored_content(
-                job_spec, cv_structure, cv_content, return_raw=True, matched_keywords=missing_keywords
+                job_spec, cv_structure, cv_content, return_raw=True
             )
             res_queue.put(("SUCCESS", res))
         except Exception as e:
@@ -121,7 +114,7 @@ def main():
         st.divider()
         st.header("LLM Provider & Settings")
 
-        llm_provider = st.selectbox("Select LLM Provider:", options=["Local", "DeepSeek", "Grok"], index=0)
+        llm_provider = st.selectbox("Select LLM Provider:", options=["Local", "ChatGPT", "DeepSeek", "Grok"], index=0)
 
         if llm_provider == "Local":
             # Read defaults from env
@@ -136,6 +129,17 @@ def main():
             llm_timeout = st.number_input(
                 "Timeout (seconds):", min_value=5, max_value=600, value=default_timeout, step=5
             )
+        elif llm_provider == "ChatGPT":
+            openai_key = os.getenv("OPENAI_API_KEY")
+            if openai_key:
+                st.success("🔑 OpenAI API Key loaded from environment.")
+            else:
+                st.error("⚠️ OpenAI API Key missing! Set OPENAI_API_KEY in your .env file.")
+
+            llm_base_url = "https://api.openai.com/v1"
+            llm_api_key = openai_key or ""
+            llm_model = "gpt-4o"
+            llm_timeout = st.number_input("Timeout (seconds):", min_value=5, max_value=600, value=15, step=5)
         elif llm_provider == "DeepSeek":
             ds_key = os.getenv("DEEPSEEK_API_KEY")
             if ds_key:
@@ -178,61 +182,18 @@ def main():
         else:
             st.warning(f"Note: `{CV_CONTENT_PATH}` not found. Proceeding without additional achievements.")
 
-    # Process ATS keywords and template scoring
-    selected_cv = cv_files[0] if cv_files else None
-    chosen_template = None
-    ats_keywords = {"technical_skills": [], "soft_skills": [], "domain_and_certifications": []}
-    flat_keywords = []
-    template_scores = {}
-    template_matches = {}
-
-    ats_keywords_error = None
-    if job_spec.strip():
-        try:
-            # Get ATS keywords (cached)
-            ats_keywords = get_ats_keywords(job_spec, llm_base_url, llm_api_key, llm_model, llm_timeout, llm_provider)
-            flat_keywords = (
-                ats_keywords.get("technical_skills", [])
-                + ats_keywords.get("soft_skills", [])
-                + ats_keywords.get("domain_and_certifications", [])
-            )
-            flat_keywords = [k for k in flat_keywords if k.strip()]
-
-            if flat_keywords:
-                best_score = -1.0
-                for cv_file in cv_files:
-                    cv_path = os.path.join(CV_DIR, cv_file)
-                    txt = get_docx_text(cv_path).lower()
-
-                    matched = []
-                    for kw in flat_keywords:
-                        if kw.lower() in txt:
-                            matched.append(kw)
-
-                    score_pct = (len(matched) / len(flat_keywords)) * 100
-                    template_scores[cv_file] = score_pct
-                    template_matches[cv_file] = {
-                        "matched": matched,
-                        "missing": [k for k in flat_keywords if k not in matched],
-                    }
-                    if score_pct > best_score:
-                        best_score = score_pct
-                        chosen_template = cv_file
-
-                if chosen_template:
-                    selected_cv = chosen_template
-        except Exception as e:
-            ats_keywords_error = e
-
+    # Template selection
     with col_left:
-        st.subheader("2. Selected Template")
+        st.subheader("2. Select CV Template")
         if cv_files:
-            if chosen_template:
-                st.info(f"🎯 **Best Match:** `{selected_cv}`")
-            else:
-                st.info(f"📂 **Default Template:** `{selected_cv}`")
+            selected_cv = st.selectbox(
+                "Choose a template CV to audit and tailor:",
+                options=cv_files,
+                index=0,
+            )
         else:
-            st.error("No templates available.")
+            selected_cv = None
+            st.error("No templates available in `cvs/`. Please add some `.docx` files.")
 
         st.divider()
 
@@ -243,32 +204,26 @@ def main():
         if generate_clicked:
             if not job_spec:
                 st.error("Please provide a job specification first.")
-            elif not cv_files:
-                st.error("No CV templates found to work with.")
+            elif not cv_files or not selected_cv:
+                st.error("No CV template selected or available to work with.")
             else:
-                assert selected_cv is not None
                 # Clear previous session state on new generation
                 st.session_state["tailored_raw_response"] = None
                 st.session_state["tailored_diff"] = None
                 st.session_state["tailored_new_cv_name"] = None
                 st.session_state["tailored_new_cv_path"] = None
                 st.session_state["tailored_success_msg"] = None
-                st.session_state["tailored_remaining_gaps"] = None
+                st.session_state["tailored_strengths"] = []
+                st.session_state["tailored_weaknesses"] = []
+                st.session_state["tailored_ats_match_pct"] = 0
+                st.session_state["tailored_missing_keywords"] = []
+                st.session_state["tailored_gaps"] = []
 
                 try:
                     with st.status("Tailoring in progress...", expanded=True) as status:
                         st.write(f"🔍 Analyzing `{selected_cv}` structure...")
                         parser = CVParser(os.path.join(CV_DIR, selected_cv))
                         cv_structure = parser.parse()
-
-                        # Get missing keywords from ATS scan for the selected CV
-                        missing_keywords = []
-                        if selected_cv in template_matches:
-                            missing_keywords = template_matches[selected_cv]["missing"]
-                        else:
-                            # Fallback if selected_cv isn't in matches
-                            cv_text_lower = get_docx_text(os.path.join(CV_DIR, selected_cv)).lower()
-                            missing_keywords = [k for k in flat_keywords if k.lower() not in cv_text_lower]
 
                         # Generate updates using LLM in a background thread
                         st.write("🧠 Consulting LLM for content alignment (background thread)...")
@@ -283,7 +238,7 @@ def main():
                         import time
 
                         thread, res_queue = run_llm_threaded(
-                            brain, job_spec, cv_structure, cv_content, missing_keywords
+                            brain, job_spec, cv_structure, cv_content
                         )
 
                         # Monitor the thread in a non-blocking way
@@ -296,10 +251,21 @@ def main():
                             raise result
 
                         if isinstance(result, tuple):
-                            updates, raw_llm_response = result
+                            audit_data, raw_llm_response = result
                         else:
-                            updates = result
+                            audit_data = result
                             raw_llm_response = None
+
+                        updates = audit_data.get("updates", [])
+                        strengths = audit_data.get("strengths", [])
+                        weaknesses = audit_data.get("weaknesses", [])
+                        ats_match_pct = audit_data.get("ats_match_pct", 0)
+
+                        st.session_state["tailored_strengths"] = strengths
+                        st.session_state["tailored_weaknesses"] = weaknesses
+                        st.session_state["tailored_ats_match_pct"] = ats_match_pct
+                        st.session_state["tailored_missing_keywords"] = audit_data.get("missing_keywords", [])
+                        st.session_state["tailored_gaps"] = audit_data.get("gaps", [])
 
                         if not updates:
                             st.warning("The LLM didn't find any specific changes to make.")
@@ -310,10 +276,6 @@ def main():
                             st.session_state["tailored_success_msg"] = (
                                 "The LLM analyzed the CV and did not suggest any updates."
                             )
-                            if selected_cv in template_matches:
-                                st.session_state["tailored_remaining_gaps"] = template_matches[selected_cv]["missing"]
-                            else:
-                                st.session_state["tailored_remaining_gaps"] = flat_keywords
                         else:
                             st.write(f"Found {len(updates)} potential updates.")
                             st.write("✍️ Applying surgical updates to document...")
@@ -361,145 +323,80 @@ def main():
                                 f"Successfully applied {applied_count} updates! New file: `{new_cv_name}`"
                             )
 
-                            # Calculate remaining keyword gaps after tailoring
-                            tailored_text = get_docx_text(new_cv_path).lower()
-                            remaining_gaps = [k for k in flat_keywords if k.lower() not in tailored_text]
-                            st.session_state["tailored_remaining_gaps"] = remaining_gaps
-
                     status.update(label="Tailoring Complete!", state="complete", expanded=False)
                     st.balloons()
                 except Exception as e:
                     st.error(f"❌ **Tailoring Failed:** {e}")
 
-    # Right Column Tabs Dashboard
+    # Right Column: Unified CV Audit & Tailoring Output
     with col_right:
-        tab_ats, tab_tailor = st.tabs(["📊 ATS Scan Dashboard", "📄 Tailored Output"])
+        st.markdown("### 📄 CV Audit & Tailoring Output")
+        if st.session_state.get("tailored_success_msg"):
+            st.success(st.session_state["tailored_success_msg"])
 
-        with tab_ats:
-            if not job_spec.strip():
-                st.info("Paste a job specification in the left column to run the ATS scan and analyze templates.")
-            elif ats_keywords_error is not None:
-                st.error(f"❌ **ATS Scan Error:** {ats_keywords_error}")
-                st.info(
-                    "Please verify your LLM settings (API Base URL, API Key, Model Name) in the sidebar configuration."
+            # Render missing keywords if any
+            missing_keywords = st.session_state.get("tailored_missing_keywords", [])
+            if missing_keywords:
+                st.warning(f"⚠️ **Missing Target ATS Keywords:** {', '.join(missing_keywords)}")
+
+            # Audit Results Row
+            aud_col1, aud_col2, aud_col3 = st.columns([3, 4, 4])
+            with aud_col1:
+                match_pct = st.session_state.get("tailored_ats_match_pct", 0)
+                st.metric("ATS Match Rate", f"{match_pct}%")
+            with aud_col2:
+                with st.expander("✅ CV Strengths", expanded=True):
+                    strengths = st.session_state.get("tailored_strengths", [])
+                    if strengths:
+                        for s in strengths:
+                            st.markdown(f"- {s}")
+                    else:
+                        st.write("*No strengths documented*")
+            with aud_col3:
+                with st.expander("⚠️ CV Gaps & Weaknesses", expanded=True):
+                    gaps = st.session_state.get("tailored_gaps", [])
+                    unresolved = [w for w in st.session_state.get("tailored_weaknesses", []) if w.startswith("Unresolved:")]
+                    
+                    if gaps or unresolved:
+                        for g in gaps:
+                            st.markdown(f"- {g}")
+                        for u in unresolved:
+                            clean_u = u.replace("Unresolved:", "").strip()
+                            st.markdown(f"- **Unresolved Item:** {clean_u}")
+                    else:
+                        st.write("*No gaps or weaknesses documented*")
+
+            # Provide direct download button
+            try:
+                with open(st.session_state["tailored_new_cv_path"], "rb") as fp:
+                    data = fp.read()
+                st.download_button(
+                    label="Download Updated CV",
+                    data=data,
+                    file_name=st.session_state["tailored_new_cv_name"],
+                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    use_container_width=True,
                 )
-            else:
-                st.markdown("### 📊 ATS Analysis & Template Selection")
+            except Exception as e:
+                st.error(f"Error loading tailored file for download: {e}")
 
-                # 1. Extracted Keywords categories
-                st.write("#### 🔍 Extracted Keywords from Job Spec")
-                k_col1, k_col2, k_col3 = st.columns(3)
-                with k_col1:
-                    st.markdown("**Technical Skills**")
-                    tech_list = ats_keywords.get("technical_skills", [])
-                    if tech_list:
-                        for t in tech_list:
-                            st.markdown(f"- `{t}`")
-                    else:
-                        st.write("*None extracted*")
-                with k_col2:
-                    st.markdown("**Soft Skills & Methodologies**")
-                    soft_list = ats_keywords.get("soft_skills", [])
-                    if soft_list:
-                        for s in soft_list:
-                            st.markdown(f"- `{s}`")
-                    else:
-                        st.write("*None extracted*")
-                with k_col3:
-                    st.markdown("**Domain & Certifications**")
-                    domain_list = ats_keywords.get("domain_and_certifications", [])
-                    if domain_list:
-                        for d in domain_list:
-                            st.markdown(f"- `{d}`")
-                    else:
-                        st.write("*None extracted*")
+            st.divider()
 
-                st.write("---")
-
-                # 2. CV Template Match Scores
-                st.write("#### 📈 CV Template Match Rates")
-                if template_scores:
-                    # Sort templates by score
-                    sorted_templates = sorted(template_scores.items(), key=lambda x: x[1], reverse=True)
-                    for cv_file, score in sorted_templates:
-                        is_selected = cv_file == selected_cv
-                        label = f"**{cv_file}**" + (" *(Selected)*" if is_selected else "")
-                        st.write(f"{label} — **{score:.1f}% Match**")
-                        st.progress(score / 100.0)
+            col_l, col_r = st.columns(2)
+            with col_l:
+                st.write("#### LLM Proposed Updates")
+                if st.session_state.get("tailored_raw_response"):
+                    st.code(st.session_state["tailored_raw_response"], language="json")
                 else:
-                    st.write("*No scores available*")
-
-                # 3. Selected CV Gap Analysis
-                if selected_cv in template_matches:
-                    st.write("---")
-                    st.write(f"#### 🔍 Gap Analysis for Selected CV: `{selected_cv}`")
-                    matches = template_matches[selected_cv]["matched"]
-                    gaps = template_matches[selected_cv]["missing"]
-
-                    col_m, col_g = st.columns(2)
-                    with col_m:
-                        st.success(f"✅ Matched Keywords ({len(matches)})")
-                        if matches:
-                            st.markdown(" ".join(f"`{m}`" for m in matches))
-                        else:
-                            st.write("None matched.")
-                    with col_g:
-                        st.warning(f"❌ Missing Keywords / Gaps ({len(gaps)})")
-                        if gaps:
-                            st.markdown(" ".join(f"`{g}`" for g in gaps))
-                        else:
-                            st.write("No gaps detected! Excellent template choice.")
-
-        with tab_tailor:
-            st.markdown("### 📄 Tailored CV Generation Output")
-            if st.session_state.get("tailored_success_msg"):
-                st.success(st.session_state["tailored_success_msg"])
-
-                # Provide direct download button
-                try:
-                    with open(st.session_state["tailored_new_cv_path"], "rb") as fp:
-                        data = fp.read()
-                    st.download_button(
-                        label="Download Updated CV",
-                        data=data,
-                        file_name=st.session_state["tailored_new_cv_name"],
-                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                        use_container_width=True,
-                    )
-                except Exception as e:
-                    st.error(f"Error loading tailored file for download: {e}")
-
-                st.divider()
-
-                col_l, col_r = st.columns(2)
-                with col_l:
-                    st.write("#### LLM Proposed Updates")
-                    if st.session_state.get("tailored_raw_response"):
-                        st.code(st.session_state["tailored_raw_response"], language="json")
-                    else:
-                        st.info("No raw response details.")
-                with col_r:
-                    st.write("#### Text Changes (Unified Diff)")
-                    if st.session_state.get("tailored_diff"):
-                        st.code(st.session_state["tailored_diff"], language="diff")
-                    else:
-                        st.info("No text changes detected.")
-
-                # Display remaining keyword gaps
-                st.divider()
-                st.write("#### ⚠️ Remaining Keyword Gaps (Unmatched Requirements)")
-                remaining_gaps = st.session_state.get("tailored_remaining_gaps", [])
-                if remaining_gaps:
-                    st.warning(
-                        f"The tailored CV still lacks mentions of the following {len(remaining_gaps)} ATS keywords. You may need to address these manually or discuss them as transferable skills:"
-                    )
-                    st.markdown(" ".join(f"`{g}`" for g in remaining_gaps))
+                    st.info("No raw response details.")
+            with col_r:
+                st.write("#### Text Changes (Unified Diff)")
+                if st.session_state.get("tailored_diff"):
+                    st.code(st.session_state["tailored_diff"], language="diff")
                 else:
-                    st.success(
-                        "🎉 All ATS keywords have been successfully matched and incorporated into the tailored CV!"
-                    )
-            else:
-                st.info("Click the **Generate Tailored CV** button in the left column to tailor the selected CV.")
+                    st.info("No text changes detected.")
+        else:
+            st.info("Click the **Generate Tailored CV** button in the left column to tailor the selected CV.")
 
 
 if __name__ == "__main__":

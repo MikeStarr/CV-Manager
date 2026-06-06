@@ -26,23 +26,33 @@ Docs deploy automatically on push to `main` via GitHub Actions. To enable this, 
 
 ## Cloud LLM Configuration
 
-CV Manager supports local LLM execution (default) as well as cloud overrides via DeepSeek and Grok.
+CV Manager supports local LLM execution (default) as well as cloud providers: OpenAI (ChatGPT), DeepSeek, and Grok.
 
 ### 1. Configure API Keys
 To use a cloud provider, create a `.env` file at the root of the project (you can copy `.env.example` as a template) and add your API keys:
 
 ```env
+# OpenAI (ChatGPT) API Key (from https://platform.openai.com/)
+OPENAI_API_KEY=your_openai_api_key_here
+
 # DeepSeek API Key (from https://platform.deepseek.com/)
-DEEPSEEK_API_KEY=your_deepseek_api_key
+DEEPSEEK_API_KEY=your_deepseek_api_key_here
 
 # Grok API Key (from https://console.x.ai/)
-XAI_API_KEY=your_grok_api_key
+XAI_API_KEY=your_grok_api_key_here
+
+# Local LLM Configuration (LM Studio)
+LM_STUDIO_MODEL=llama-3.1-8b-instruct
 ```
 
 ### 2. Using Cloud LLMs in the UI
 1. Launch the Streamlit application.
 2. In the left-hand configuration sidebar, locate the **LLM Provider & Settings** section.
-3. Use the **Select LLM Provider** dropdown to select either **Local**, **DeepSeek**, or **Grok**.
+3. Use the **Select LLM Provider** dropdown to select from:
+   - **Local** - Run locally with LM Studio (default)
+   - **ChatGPT** - Use OpenAI's GPT-4o model
+   - **DeepSeek** - Use DeepSeek's deepseek-chat model
+   - **Grok** - Use xAI's Grok-4.3 model
 4. The application will automatically configure the appropriate API endpoint, model, and safely load the corresponding API key from your `.env` file. You can also customize the request timeout limit.
 
 ## Development

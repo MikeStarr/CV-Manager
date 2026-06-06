@@ -110,7 +110,7 @@ class CVUpdater:
 
         # Build regex for flexible whitespace and dashes
         escaped = re.escape(target_clean)
-        pattern = re.sub(r"\\s+", lambda m: r"[\s\xa0]+", escaped)
+        pattern = re.sub(r"\\ | ", lambda m: r"[\s\xa0]+", escaped)
         pattern = re.sub(r"\\-|\\–|\\—", lambda m: r"[-–—]", pattern)
         try:
             regex = re.compile(pattern, re.IGNORECASE)

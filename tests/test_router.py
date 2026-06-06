@@ -21,12 +21,40 @@ def test_generate_cv_content_missing_api_keys(monkeypatch):
     """Ensure ValueError is raised if api keys are missing for cloud providers."""
     monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
     monkeypatch.delenv("XAI_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
 
     with pytest.raises(ValueError, match="DeepSeek API key is missing"):
         generate_cv_content("sys", "user", "DeepSeek")
 
     with pytest.raises(ValueError, match="Grok API key is missing"):
         generate_cv_content("sys", "user", "Grok")
+
+    with pytest.raises(ValueError, match="OpenAI API key is missing"):
+        generate_cv_content("sys", "user", "ChatGPT")
+
+
+@patch("cv_manager.brain.OpenAI")
+def test_generate_cv_content_chatgpt_success(mock_openai_class, monkeypatch):
+    """Ensure ChatGPT API is called with correct parameters."""
+    monkeypatch.setenv("OPENAI_API_KEY", "mock-openai-key")
+
+    mock_client = MagicMock()
+    mock_openai_class.return_value = mock_client
+
+    mock_response = MagicMock()
+    mock_response.choices[0].message.content = "chatgpt response"
+    mock_client.chat.completions.create.return_value = mock_response
+
+    res = generate_cv_content("sys", "user", "ChatGPT")
+    assert res == "chatgpt response"
+
+    mock_openai_class.assert_called_once_with(api_key="mock-openai-key", base_url="https://api.openai.com/v1")
+    mock_client.chat.completions.create.assert_called_once_with(
+        model="gpt-5.4",
+        messages=[{"role": "system", "content": "sys"}, {"role": "user", "content": "user"}],
+        temperature=0,
+        timeout=15.0,
+    )
 
 
 @patch("cv_manager.brain.OpenAI")
@@ -75,9 +103,10 @@ def test_cv_brain_strips_section_prefixes():
 
     cv_structure = [{"text": "Digital Delivery Manager", "style": "Normal"}, {"text": "Old Text", "style": "Normal"}]
 
-    updates = brain.generate_tailored_content(job_spec="test", cv_structure=cv_structure, cv_content_md="")
+    result = brain.generate_tailored_content(job_spec="test", cv_structure=cv_structure, cv_content_md="")
 
-    assert isinstance(updates, list)
+    assert isinstance(result, dict)
+    updates = result["updates"]
     assert len(updates) == 2
     assert updates[0]["original_text"] == "Digital Delivery Manager"
     assert updates[0]["new_text"] == "Project Manager"
@@ -113,9 +142,10 @@ def test_cv_brain_flexible_matching():
         {"text": "Certified PRINCE2 Practitioner with 15+ years of experience.", "style": "Normal"},
     ]
 
-    updates = brain.generate_tailored_content(job_spec="test", cv_structure=cv_structure, cv_content_md="")
+    result = brain.generate_tailored_content(job_spec="test", cv_structure=cv_structure, cv_content_md="")
 
-    assert isinstance(updates, list)
+    assert isinstance(result, dict)
+    updates = result["updates"]
     assert len(updates) == 2
     assert "LSEG" in updates[0]["original_text"]
     assert "PRINCE2" in updates[1]["original_text"]

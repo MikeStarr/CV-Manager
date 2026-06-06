@@ -32,17 +32,6 @@ def test_app_functions_integrity():
     sig = inspect.signature(app.get_cv_files)
     assert len(sig.parameters) == 0
 
-    # get_ats_keywords
-    # Need to read from source to check signature without executing decorator
-    # Streamlit mocking hides the original function completely
-    app_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src", "cv_manager", "app.py"))
-    with open(app_path, encoding="utf-8") as f:
-        content = f.read()
-    assert (
-        "def get_ats_keywords(job_spec: str, base_url: str, api_key: str, model: str, timeout: float, provider: str) -> dict:"
-        in content
-    )
-
     # run_llm_threaded
     assert hasattr(app, "run_llm_threaded")
     sig = inspect.signature(app.run_llm_threaded)
@@ -50,7 +39,6 @@ def test_app_functions_integrity():
     assert "job_spec" in sig.parameters
     assert "cv_structure" in sig.parameters
     assert "cv_content" in sig.parameters
-    assert "missing_keywords" in sig.parameters
 
 
 def test_app_session_state_keys_present():
@@ -64,7 +52,6 @@ def test_app_session_state_keys_present():
         "tailored_new_cv_name",
         "tailored_new_cv_path",
         "tailored_raw_response",
-        "tailored_remaining_gaps",
         "tailored_success_msg",
     ]
 
@@ -150,10 +137,6 @@ def test_brain_integrity():
     assert "cv_structure" in sig.parameters
     assert "cv_content_md" in sig.parameters
     # We do not check for missing_keywords as it seems it's not present based on test error
-
-    assert hasattr(brain_class, "extract_ats_keywords")
-    sig = inspect.signature(brain_class.extract_ats_keywords)
-    assert "job_spec" in sig.parameters
 
     assert hasattr(brain_class, "generate_diff")
     sig = inspect.signature(brain_class.generate_diff)

@@ -44,7 +44,7 @@ test = [
     "pytest-mock>=3.15.1",
 ]
 typecheck = [
-    "ty",
+    "pyrefly",
 ]
 docs = [
     "zensical",
@@ -60,10 +60,7 @@ homepage = "https://github.com/MikeStarr/CV-Manager"
 [project.scripts]
 cv_manager = "cv_manager.cli:app"
 
-[tool.ty]
-# All rules are enabled as "error" by default; no need to specify unless overriding.
-# Example override: relax a rule for the entire project (uncomment if needed).
-# rules.TY015 = "warn"  # For invalid-argument-type, warn instead of error.
+
 
 [tool.ruff]
 line-length = 120
@@ -107,3 +104,11 @@ testpaths = ["tests"]
 [tool.uv]
 package = true
 default-groups = ["dev"]
+
+[tool.pyrefly]
+disable-search-path-heuristics = true
+search-path = ["."]
+project-includes = [
+    "**/*.py*",
+    "**/*.ipynb",
+]

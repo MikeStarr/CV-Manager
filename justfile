@@ -10,24 +10,16 @@ alias d := docs-serve
 alias t := test
 alias tc := type-check
 
-# Type check the project with ty
+# Type check the project with pyrefly
 type-check:
-    uv run --python=3.14 ty check .
-
-# Type check with concise output (one diagnostic per line)
-type-check-concise:
-    uv run --python=3.14 ty check --output-format=concise .
-
-# Type check in watch mode (rechecks on file changes)
-type-check-watch:
-    uv run --python=3.14 ty check --watch .
+    uv run --python=3.14 pyrefly check
 
 # Run all the formatting, linting, and testing commands
 qa:
     uv run --python=3.14 ruff format .
     uv run --python=3.14 ruff check . --fix
     uv run --python=3.14 ruff check --select I --fix .
-    uv run --python=3.14 ty check --output-format=concise .
+    uv run --python=3.14 pyrefly check
     uv run --python=3.14 pytest
 
 # Run all the tests for all the supported Python versions

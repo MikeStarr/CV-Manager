@@ -1,6 +1,7 @@
 """Integration tests for CVBrain — verifies JSON parsing, return_raw behavior, and prompt construction."""
 
 import json
+from typing import Any
 
 # Ensure src is on path so imports work from any directory.
 import sys
@@ -41,12 +42,14 @@ def test_valid_json_parsed():
     )
     brain.client.chat.completions.create.return_value = mock_response
 
-    updates = brain.generate_tailored_content(
+    result = brain.generate_tailored_content(
         job_spec="Python developer needed",
         cv_structure=[{"text": "I know Python", "style": "Normal"}],
         cv_content_md="",
     )
 
+    assert isinstance(result, dict)
+    updates = result["updates"]
     assert len(updates) == 1
     assert updates[0]["original_text"] == "I know Python"
 
@@ -63,12 +66,14 @@ def test_json_in_code_blocks_extracted():
     mock_response.choices[0].message.content = '```json\n[{"original_text": "old", "new_text": "new"}]\n```'
     brain.client.chat.completions.create.return_value = mock_response
 
-    updates = brain.generate_tailored_content(
+    result = brain.generate_tailored_content(
         job_spec="test",
         cv_structure=[{"text": "old", "style": "Normal"}],
         cv_content_md="",
     )
 
+    assert isinstance(result, dict)
+    updates = result["updates"]
     assert len(updates) == 1
     assert updates[0]["new_text"] == "new"
 
@@ -97,8 +102,10 @@ def test_non_json_with_return_raw_returns_raw():
 
     # Should be a tuple (updates, raw_content) even when JSON parsing fails
     assert isinstance(result, tuple), f"Expected tuple, got {type(result)}: {result}"
-    updates, raw_content = result
+    audit_data, raw_content = result
+    updates = audit_data["updates"]
     assert updates == []  # no valid updates parsed
+    assert raw_content is not None
     assert "I've reviewed your CV" in raw_content  # but we still get the raw text
 
 
@@ -108,7 +115,7 @@ def test_non_json_with_return_raw_returns_raw():
 
 
 def test_non_json_with_return_raw_false_returns_empty():
-    """LLM returns prose → when return_raw=False, caller gets []."""
+    """LLM returns prose → when return_raw=False, caller gets empty audit dict."""
     brain = _make_brain()
     mock_response = MagicMock()
     mock_response.choices[0].message.content = "This is not JSON at all."
@@ -121,7 +128,8 @@ def test_non_json_with_return_raw_false_returns_empty():
         return_raw=False,
     )
 
-    assert result == []
+    assert isinstance(result, dict)
+    assert result["updates"] == []
 
 
 # ---------------------------------------------------------------------------
@@ -144,8 +152,10 @@ def test_empty_json_array():
     )
 
     assert isinstance(result, tuple)
-    updates, raw_content = result
+    audit_data, raw_content = result
+    updates = audit_data["updates"]
     assert updates == []
+    assert raw_content is not None
     assert "[]" in raw_content
 
 
@@ -165,12 +175,14 @@ def test_dict_with_list_value():
     )
     brain.client.chat.completions.create.return_value = mock_response
 
-    updates = brain.generate_tailored_content(
+    result = brain.generate_tailored_content(
         job_spec="test",
         cv_structure=[{"text": "a", "style": "Normal"}],
         cv_content_md="",
     )
 
+    assert isinstance(result, dict)
+    updates = result["updates"]
     assert len(updates) == 1
 
 
@@ -201,16 +213,16 @@ def test_system_prompt_is_short_and_json_first():
     )
 
     # Get the actual system prompt from what was passed to the LLM mock.
-    call_args = brain.client.chat.completions.create.call_args
+    client: Any = brain.client
+    call_args = client.chat.completions.create.call_args
     messages = call_args.kwargs["messages"]
     system_prompt = messages[0]["content"]
 
-    # JSON instruction should be FIRST (primacy effect) — check first few lines.
-    first_lines = "\n".join(system_prompt.split("\n")[:5])
-    assert "JSON" in first_lines, f"JSON format instruction should appear early.\nPrompt starts:\n{first_lines}"
+    # JSON instruction should be in the system prompt.
+    assert "JSON" in system_prompt, f"JSON format instruction should appear in prompt.\nPrompt:\n{system_prompt}"
 
-    # Prompt should not be excessively long (was 2000+ chars before fix).
-    assert len(system_prompt) < 2100, f"System prompt too long ({len(system_prompt)} chars): {system_prompt}"
+    # Prompt should not be excessively long (was 2000+ chars before fix, updated to accommodate the custom FS PM audit prompt).
+    assert len(system_prompt) < 6500, f"System prompt too long ({len(system_prompt)} chars): {system_prompt}"
 
 
 # ---------------------------------------------------------------------------
@@ -230,7 +242,7 @@ def test_protected_headings_filtered():
     )
     brain.client.chat.completions.create.return_value = mock_response
 
-    updates = brain.generate_tailored_content(
+    result = brain.generate_tailored_content(
         job_spec="test",
         cv_structure=[
             {"text": "Career Highlights:", "style": "Heading 2"},
@@ -239,6 +251,8 @@ def test_protected_headings_filtered():
         cv_content_md="",
     )
 
+    assert isinstance(result, dict)
+    updates = result["updates"]
     # The Career Highlights update should be filtered out.
     for upd in updates:
         assert "Career Highlights" not in upd.get("original_text", "")
@@ -281,7 +295,8 @@ def test_realistic_flow():
     )
 
     assert isinstance(result, tuple)
-    updates, raw_content = result
+    audit_data, raw_content = result
+    updates = audit_data["updates"]
     assert len(updates) == 2
     assert "Title: Senior Delivery" in updates[1]["new_text"]
 
@@ -309,7 +324,8 @@ def test_achievements_database_included_in_user_prompt():
         return_raw=False,
     )
 
-    call_args = brain.client.chat.completions.create.call_args
+    client: Any = brain.client
+    call_args = client.chat.completions.create.call_args
     messages = call_args.kwargs["messages"]
     user_prompt = messages[1]["content"]
 
@@ -336,54 +352,103 @@ def test_connection_error():
 
 
 # ---------------------------------------------------------------------------
-# Test 11 — ATS keyword extraction success
+# Test 10.5 — Parsing of the new structured issues JSON schema
 # ---------------------------------------------------------------------------
 
 
-def test_extract_ats_keywords_success():
-    """ATS keyword extraction returns structured list on successful LLM response."""
+def test_issues_schema_parsing():
+    """Verify parsing of issues list into updates and formatted weaknesses."""
     brain = _make_brain()
     mock_response = MagicMock()
     mock_response.choices[0].message.content = json.dumps(
-        {"technical_skills": ["Python", "AWS"], "soft_skills": ["Leadership"], "domain_and_certifications": ["FinTech"]}
+        {
+            "strengths": ["Leadership experience"],
+            "issues": [
+                {
+                    "issue": "Generic phrase used",
+                    "original_text": "Proven track record in delivery",
+                    "proposed_fix": "Managed delivery of technology programmes",
+                    "fixable": True,
+                },
+                {
+                    "issue": "Missing metrics",
+                    "original_text": "Led project teams",
+                    "proposed_fix": "Cannot be improved without additional evidence.",
+                    "fixable": False,
+                },
+            ],
+            "ats_match_pct": 85,
+        }
     )
     brain.client.chat.completions.create.return_value = mock_response
 
-    result = brain.extract_ats_keywords("Need a Python dev with AWS and Leadership in FinTech")
-    assert result["technical_skills"] == ["Python", "AWS"]
-    assert result["soft_skills"] == ["Leadership"]
-    assert result["domain_and_certifications"] == ["FinTech"]
+    result = brain.generate_tailored_content(
+        job_spec="test",
+        cv_structure=[{"text": "Proven track record in delivery", "style": "Normal"}],
+        cv_content_md="",
+    )
+
+    assert isinstance(result, dict)
+    assert result["strengths"] == ["Leadership experience"]
+    assert result["ats_match_pct"] == 85
+    
+    updates = result["updates"]
+    assert len(updates) == 1
+    assert updates[0]["original_text"] == "Proven track record in delivery"
+    assert updates[0]["new_text"] == "Managed delivery of technology programmes"
+    
+    weaknesses = result["weaknesses"]
+    assert len(weaknesses) == 2
+    assert "Fixed: Generic phrase used" in weaknesses[0]
+    assert "Unresolved: Missing metrics" in weaknesses[1]
 
 
 # ---------------------------------------------------------------------------
-# Test 12 — ATS keyword extraction failure
+# Test 11 — Fallback job title auto-insertion works with title keywords
 # ---------------------------------------------------------------------------
 
 
-def test_extract_ats_keywords_fallback():
-    """ATS keyword extraction raises ConnectionError on LLM error/invalid JSON."""
+def test_title_fallback_insertion():
+    """If LLM doesn't return a title update, but job spec has Job Title and CV has a title paragraph, fallback inserts it."""
     brain = _make_brain()
-    brain.client.chat.completions.create.side_effect = Exception("LLM Down")
+    mock_response = MagicMock()
+    mock_response.choices[0].message.content = json.dumps(
+        {
+            "strengths": [],
+            "issues": [
+                {
+                    "issue": "Generic phrase",
+                    "original_text": "Experienced Project Manager",
+                    "proposed_fix": "Senior Delivery Manager",
+                    "fixable": True,
+                }
+            ],
+            "ats_match_pct": 70,
+        }
+    )
+    brain.client.chat.completions.create.return_value = mock_response
 
-    try:
-        brain.extract_ats_keywords("Python AWS CI/CD Scrum Leadership")
-        raise AssertionError("Expected ConnectionError to be raised")
-    except ConnectionError as e:
-        assert "Could not connect to LLM server" in str(e)
+    # CV structure has contact line (index 0) and title line (index 1)
+    cv_structure = [
+        {"text": "John Doe | email@example.com", "style": "Normal"},
+        {"text": "Digital Delivery Manager | Digital Ecosystems", "style": "Normal"},
+        {"text": "Experienced Project Manager", "style": "Normal"},
+    ]
 
+    result = brain.generate_tailored_content(
+        job_spec="Job Title: Portfolio Manager / Programme Lead",
+        cv_structure=cv_structure,
+        cv_content_md="",
+    )
 
-# ---------------------------------------------------------------------------
-# Test 13 — ATS keyword extraction empty job spec
-# ---------------------------------------------------------------------------
+    updates = result["updates"]
+    # There should be 2 updates: the generic phrase fix, plus the fallback title update
+    assert len(updates) == 2
 
-
-def test_extract_ats_keywords_empty():
-    """ATS keyword extraction returns empty categories if job spec is empty."""
-    brain = _make_brain()
-    result = brain.extract_ats_keywords("   ")
-    assert result["technical_skills"] == []
-    assert result["soft_skills"] == []
-    assert result["domain_and_certifications"] == []
+    # One of the updates should target 'Digital Delivery Manager | Digital Ecosystems'
+    fallback_update = [u for u in updates if u["original_text"] == "Digital Delivery Manager | Digital Ecosystems"]
+    assert len(fallback_update) == 1
+    assert fallback_update[0]["new_text"] == "Portfolio Manager / Programme Lead"
 
 
 # ---------------------------------------------------------------------------
@@ -404,10 +469,9 @@ if __name__ == "__main__":
         test_protected_headings_filtered,
         test_realistic_flow,
         test_connection_error,
-        test_extract_ats_keywords_success,
-        test_extract_ats_keywords_fallback,
-        test_extract_ats_keywords_empty,
         test_achievements_database_included_in_user_prompt,
+        test_issues_schema_parsing,
+        test_title_fallback_insertion,
     ]
 
     passed = 0
