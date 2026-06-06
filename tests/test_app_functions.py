@@ -56,6 +56,7 @@ def test_get_cv_files(tmp_path, monkeypatch):
     files = app.get_cv_files()
     assert sorted(files) == ["template1.docx"]
 
+
 # The ``load_registry`` helper is defined inside :func:`main` and therefore not
 # importable from the module namespace.  Testing it directly would require
 # executing the entire UI flow, which is outside the scope of a unit test.
