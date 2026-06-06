@@ -62,7 +62,7 @@ class CVParser:
                 is_heading = False
                 style_name = "Normal"
 
-            elements.append({"text": text, "style": style_name, "is_heading": is_heading})
+            elements.append({"text": text, "style": para.style.name, "is_heading": is_heading})
         return elements
 
 
