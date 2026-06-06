@@ -1,11 +1,12 @@
+import difflib
 import json
 import logging
 import os
 import re
-import difflib
-from openai import OpenAI
-from typing import List, Dict, Any, Callable, Optional
+from typing import Any
+
 from dotenv import load_dotenv
+from openai import OpenAI
 
 # Load environment variables
 load_dotenv()
@@ -17,11 +18,11 @@ def generate_cv_content(
     system_prompt: str,
     user_prompt: str,
     provider: str,
-    api_key: Optional[str] = None,
-    base_url: Optional[str] = None,
-    model: Optional[str] = None,
+    api_key: str | None = None,
+    base_url: str | None = None,
+    model: str | None = None,
     timeout: float = 15.0,
-    client: Optional[OpenAI] = None
+    client: OpenAI | None = None,
 ) -> str:
     """
     Unified router function to call LLM providers (Local, DeepSeek, Grok).
@@ -31,14 +32,18 @@ def generate_cv_content(
     if provider_lower == "deepseek":
         target_api_key = os.getenv("DEEPSEEK_API_KEY")
         if not target_api_key:
-            raise ValueError("DeepSeek API key is missing. Please set the DEEPSEEK_API_KEY environment variable in your .env file.")
+            raise ValueError(
+                "DeepSeek API key is missing. Please set the DEEPSEEK_API_KEY environment variable in your .env file."
+            )
         target_base_url = "https://api.deepseek.com"
         target_model = "deepseek-chat"
         target_timeout = 15.0
     elif provider_lower == "grok":
         target_api_key = os.getenv("XAI_API_KEY")
         if not target_api_key:
-            raise ValueError("Grok API key is missing. Please set the XAI_API_KEY environment variable in your .env file.")
+            raise ValueError(
+                "Grok API key is missing. Please set the XAI_API_KEY environment variable in your .env file."
+            )
         target_base_url = "https://api.x.ai/v1"
         target_model = "grok-4.3"
         target_timeout = 15.0
@@ -59,24 +64,29 @@ def generate_cv_content(
     try:
         response = use_client.chat.completions.create(
             model=target_model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
+            messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
             temperature=0,
-            timeout=target_timeout
+            timeout=target_timeout,
         )
         return response.choices[0].message.content
     except Exception as e:
         logger.error(f"LLM request failed using provider {provider}: {e}")
-        raise ConnectionError(f"Could not connect to LLM server ({target_base_url}). Please check your settings: {e}") from e
-
+        raise ConnectionError(
+            f"Could not connect to LLM server ({target_base_url}). Please check your settings: {e}"
+        ) from e
 
 
 class CVBrain:
     """Handles the intelligent part of CV tailoring using an LLM."""
 
-    def __init__(self, api_key: str = None, base_url: str = None, model: str = None, timeout: float = 60.0, provider: str = "Local"):
+    def __init__(
+        self,
+        api_key: str = None,
+        base_url: str = None,
+        model: str = None,
+        timeout: float = 60.0,
+        provider: str = "Local",
+    ):
         # Fallback to environment variable or hardcoded LM Studio defaults
         self.api_key = api_key or os.getenv("OPENAI_API_KEY") or "lm-studio"
         self.base_url = base_url or "http://localhost:1234/v1"
@@ -90,11 +100,11 @@ class CVBrain:
     def generate_tailored_content(
         self,
         job_spec: str,
-        cv_structure: List[Dict[str, Any]],
+        cv_structure: list[dict[str, Any]],
         cv_content_md: str,
         return_raw: bool = False,
-        matched_keywords: Optional[List[str]] = None
-    ) -> List[Dict[str, Any]] | tuple[List[Dict[str, Any]], Optional[str]]:
+        matched_keywords: list[str] | None = None,
+    ) -> list[dict[str, Any]] | tuple[list[dict[str, Any]], str | None]:
         """
         Uses LLM to decide which parts of the CV to update and what the new text should be.
         Returns a list of updates: [{'original_text': '...', 'new_text': '...'}]
@@ -113,19 +123,16 @@ class CVBrain:
                 "Return response ONLY as valid JSON list of objects with keys 'original_text' and 'new_text'.",
                 "Do NOT include explanation, markdown formatting, or text outside the JSON.",
                 "",
-
                 "### ROLE",
                 f"You are a professional CV editor. Use {style_data.get('language', {}).get('spelling', 'UK English')} spelling.",
                 "Tailor candidate's CV to match job spec by aligning terminology and emphasizing relevant experience.",
                 "",
-
                 "### WRITING STYLE (STAR / IMPACT-FIRST)",
                 "1. Format: Action Verb → Scope/Context → Strategic Purpose → Quantified Outcome.",
                 "2. Lead with impact/outcomes first (e.g. 'Reduced deploys by 40% by implementing...' vs 'Responsible for...').",
                 "3. Use confident senior professional tone with lived detail. Avoid generic buzzwords.",
                 "4. Align CV phrasing with job spec terminology without altering underlying facts.",
                 "",
-
                 "### STRICT CONSTRAINTS (ZERO HALLUCINATION TOLERANCE)",
                 "1. Every 'original_text' MUST be an exact, word-for-word match from the CV.",
                 "2. You are a FACTUAL editor, not a creative writer. Do NOT invent, assume, or extrapolate any projects, numbers, percentages, client names, team sizes, certifications, tools, or dates.",
@@ -154,10 +161,10 @@ class CVBrain:
             )
 
         # Build a human-readable CV text from the structure for better LLM comprehension.
-        cv_text_lines: List[str] = []
+        cv_text_lines: list[str] = []
         current_section = "General"
         for elem in cv_structure:
-            style = elem.get("style", "")
+            elem.get("style", "")
             is_heading = elem.get("is_heading", False)
             text = elem.get("text", "")
             if not text:
@@ -168,25 +175,22 @@ class CVBrain:
             cv_text_lines.append(f"[{current_section}] {text}")
         cv_text = "\n".join(cv_text_lines)
 
-        user_prompt = (
-            f"### JOB SPECIFICATION:\n{job_spec}\n\n"
-            f"### CURRENT CV CONTENT:\n{cv_text}\n\n"
-        )
-        
+        user_prompt = f"### JOB SPECIFICATION:\n{job_spec}\n\n### CURRENT CV CONTENT:\n{cv_text}\n\n"
+
         if cv_content_md.strip():
             user_prompt += (
                 f"### ACHIEVEMENTS DATABASE (FACT POOL):\n"
                 f"Use the following additional details, achievements, and facts to help enrich and tailor the CV bullet points. "
                 f"Do not invent facts outside of this list and the current CV:\n{cv_content_md}\n\n"
             )
-            
+
         if matched_keywords:
             user_prompt += (
                 f"### KEYWORD GAP ANALYSIS:\n"
                 f"The following keywords/skills from the job specification are currently missing or weak in the CV. "
                 f"Attempt to incorporate them using details from the Achievements Database or existing CV facts:\n{', '.join(matched_keywords)}\n\n"
             )
-            
+
         user_prompt += (
             "### WARNING AGAINST HALLUCINATION:\n"
             "Do NOT invent any facts, project details, metrics, or technologies. "
@@ -209,14 +213,14 @@ class CVBrain:
                 base_url=self.base_url,
                 model=self.model,
                 timeout=self.timeout,
-                client=self.client
+                client=self.client,
             )
         except Exception as e:
             logger.error(f"ERROR: LLM call failed: {e}")
             raise e
 
         # Try to extract JSON from markdown code blocks if present.
-        json_match = re.search(r'```(?:json)?\s*(.*?)\s*```', raw_content, re.DOTALL)
+        json_match = re.search(r"```(?:json)?\s*(.*?)\s*```", raw_content, re.DOTALL)
         extracted = json_match.group(1).strip() if json_match else None
 
         data = None
@@ -237,7 +241,7 @@ class CVBrain:
         # Handle different possible structures returned by the model
         if isinstance(data, dict):
             updates = []
-            for key, val in data.items():
+            for _key, val in data.items():
                 if isinstance(val, list):
                     updates = val
                     break
@@ -247,9 +251,7 @@ class CVBrain:
             return []
 
         # Auto‑insert job title if the LLM didn't include one
-        title_found = any(
-            u.get("original_text", "").startswith("Title:") for u in updates
-        )
+        title_found = any(u.get("original_text", "").startswith("Title:") for u in updates)
         if not title_found:
             match = re.search(r"(?i)job\s*title[:\s]+(.+)", job_spec)
             new_title = match.group(1).strip() if match else None
@@ -263,27 +265,31 @@ class CVBrain:
         # Strip section prefixes (e.g. [General] or **[General]**) and markdown bold from headings only.
         section_prefix_re = re.compile(r"^\[[^\]]+\]\s*")
         bold_section_prefix_re = re.compile(r"^\*\*\[[^\]]+\]\*\*\s*")
-        heading_re = re.compile(r'^(\*\*[^*]+)\*\*')
+        heading_re = re.compile(r"^(\*\*[^*]+)\*\*")
         for upd in updates:
             if "original_text" in upd:
                 text = upd["original_text"].strip()
                 text = bold_section_prefix_re.sub("", text)
                 text = section_prefix_re.sub("", text)
-                text = heading_re.sub(r'\1', text)
+                text = heading_re.sub(r"\1", text)
                 upd["original_text"] = text
             if "new_text" in upd:
                 text = upd["new_text"].strip()
                 text = bold_section_prefix_re.sub("", text)
                 text = section_prefix_re.sub("", text)
-                text = heading_re.sub(r'\1', text)
+                text = heading_re.sub(r"\1", text)
                 upd["new_text"] = text
 
         # Remove any update that targets generic headings (exact match after stripping leading whitespace).
         protected_headings = {"Career Highlights:", "Areas of Expertise:"}
-        updates = [u for u in updates if not (
-            u.get("original_text", "").strip() in protected_headings or
-            u.get("new_text", "").strip() in protected_headings
-        )]
+        updates = [
+            u
+            for u in updates
+            if not (
+                u.get("original_text", "").strip() in protected_headings
+                or u.get("new_text", "").strip() in protected_headings
+            )
+        ]
 
         # Validate: every original_text MUST exist in the actual CV content.
         # This prevents the LLM from hallucinating text that isn't in the document.
@@ -313,7 +319,6 @@ class CVBrain:
                 found = True
             # 3. Check if there's a highly similar paragraph (>= 80% similarity)
             if not found and len(orig_norm) >= 15:
-                import difflib
                 for p_norm in cv_paras_norm:
                     if difflib.SequenceMatcher(None, orig_norm, p_norm).ratio() >= 0.80:
                         found = True
@@ -331,7 +336,7 @@ class CVBrain:
             return updates, raw_content
         return updates
 
-    def extract_ats_keywords(self, job_spec: str) -> Dict[str, List[str]]:
+    def extract_ats_keywords(self, job_spec: str) -> dict[str, list[str]]:
         """
         Uses LLM to extract key ATS keywords (skills, technologies, certifications) from a job description.
         Returns a dict:
@@ -342,20 +347,16 @@ class CVBrain:
         }
         """
         if not job_spec.strip():
-            return {
-                "technical_skills": [],
-                "soft_skills": [],
-                "domain_and_certifications": []
-            }
+            return {"technical_skills": [], "soft_skills": [], "domain_and_certifications": []}
 
         system_prompt = (
             "You are an expert ATS (Applicant Tracking System) parser.\n"
             "Analyze the job specification and extract the core keywords and requirements.\n"
             "Respond ONLY with a valid JSON object matching the following structure:\n"
             "{\n"
-            "  \"technical_skills\": [\"Programming languages, frameworks, databases, tools, hardware, tech platforms, etc.\"],\n"
-            "  \"soft_skills\": [\"Leadership, communication, methodology like Agile/Scrum, stakeholder management, delivery, etc.\"],\n"
-            "  \"domain_and_certifications\": [\"Certifications like PRINCE2, PMP, AWS Certified, or domain expertise like FinTech, Cyber Security, etc.\"]\n"
+            '  "technical_skills": ["Programming languages, frameworks, databases, tools, hardware, tech platforms, etc."],\n'
+            '  "soft_skills": ["Leadership, communication, methodology like Agile/Scrum, stakeholder management, delivery, etc."],\n'
+            '  "domain_and_certifications": ["Certifications like PRINCE2, PMP, AWS Certified, or domain expertise like FinTech, Cyber Security, etc."]\n'
             "}\n"
             "Do NOT include any markdown code blocks, explanation, or commentary outside the JSON."
         )
@@ -371,14 +372,14 @@ class CVBrain:
                 base_url=self.base_url,
                 model=self.model,
                 timeout=self.timeout,
-                client=self.client
+                client=self.client,
             )
         except Exception as e:
             logger.error("LLM call failed during ATS keyword extraction: %s", e)
             raise e
 
         # Try to parse JSON. Use regex to extract JSON blocks if the model wrapped it in code blocks.
-        json_match = re.search(r'```(?:json)?\s*(.*?)\s*```', raw_content, re.DOTALL)
+        json_match = re.search(r"```(?:json)?\s*(.*?)\s*```", raw_content, re.DOTALL)
         extracted = json_match.group(1).strip() if json_match else None
 
         data = None
@@ -397,17 +398,18 @@ class CVBrain:
         result = {
             "technical_skills": [str(x).strip() for x in data.get("technical_skills", []) if str(x).strip()],
             "soft_skills": [str(x).strip() for x in data.get("soft_skills", []) if str(x).strip()],
-            "domain_and_certifications": [str(x).strip() for x in data.get("domain_and_certifications", []) if str(x).strip()]
+            "domain_and_certifications": [
+                str(x).strip() for x in data.get("domain_and_certifications", []) if str(x).strip()
+            ],
         }
         return result
 
-
-    def generate_diff(self, job_spec: str, cv_structure: List[Dict[str, Any]], cv_content_md: str) -> str:
+    def generate_diff(self, job_spec: str, cv_structure: list[dict[str, Any]], cv_content_md: str) -> str:
         updates = self.generate_tailored_content(job_spec, cv_structure, cv_content_md)
         if not updates:
             return "No changes detected."
 
-        lines: List[str] = []
+        lines: list[str] = []
         for upd in updates:
             original = upd.get("original_text", "")
             new = upd.get("new_text", "")
@@ -416,7 +418,7 @@ class CVBrain:
                 [new + "\n"],
                 fromfile="src/cv_manager/data/CvContent.md",
                 tofile="src/cv_manager/data/CvContent.md",
-                lineterm=""
+                lineterm="",
             )
             lines.extend(diff)
         return "\n".join(lines) if lines else "No changes detected."
@@ -428,7 +430,7 @@ if __name__ == "__main__":
         test_updates = brain.generate_tailored_content(
             "Looking for a Python developer with experience in Streamlit.",
             [{"text": "I know Python", "style": "Normal"}],
-            "I have built many web apps using Streamlit and FastAPI."
+            "I have built many web apps using Streamlit and FastAPI.",
         )
         print(test_updates)
     except Exception as e:
