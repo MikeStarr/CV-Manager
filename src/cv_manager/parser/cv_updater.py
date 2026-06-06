@@ -1,7 +1,9 @@
+import difflib
 import os
 import re
-import difflib
+
 from docx import Document
+
 
 class CVUpdater:
     """Updates a .docx file while preserving paragraph styles."""
@@ -35,9 +37,9 @@ class CVUpdater:
         new_run_texts = {i: [] for i in range(len(runs))}
 
         matcher = difflib.SequenceMatcher(None, old_p_text, new_p_text)
-        
+
         for tag, i1, i2, j1, j2 in matcher.get_opcodes():
-            if tag == 'equal':
+            if tag == "equal":
                 # Map characters directly
                 for x in range(i1, i2):
                     # Find which run contains index x
@@ -45,7 +47,7 @@ class CVUpdater:
                         if r_start <= x < r_end:
                             new_run_texts[idx].append(new_p_text[j1 + (x - i1)])
                             break
-            elif tag == 'replace':
+            elif tag == "replace":
                 N = i2 - i1
                 M = j2 - j1
                 if M > 0 and N > 0:
@@ -70,7 +72,7 @@ class CVUpdater:
                             break
                     if not assigned:
                         new_run_texts[len(runs) - 1].append(new_p_text[j1:j2])
-            elif tag == 'insert':
+            elif tag == "insert":
                 # Find which run contains i1
                 assigned = False
                 for idx, (r_start, r_end) in enumerate(run_boundaries):
@@ -152,8 +154,8 @@ class CVUpdater:
                     matcher = difflib.SequenceMatcher(None, p_norm, para.text.lower())
                     start_char = -1
                     end_char = -1
-                    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
-                        if tag == 'equal':
+                    for tag, i1, i2, j1, _j2 in matcher.get_opcodes():
+                        if tag == "equal":
                             if i1 <= idx < i2:
                                 start_char = j1 + (idx - i1)
                             if i1 < idx + len(target_norm) <= i2:
@@ -167,7 +169,11 @@ class CVUpdater:
                             para_words = para.text.split()
                             if p_norm.startswith(target_norm):
                                 boundary_char = len(" ".join(para_words[:words_count]))
-                                self.replace_para_text_preserving_runs(para, para.text[:boundary_char].replace(para.text[:boundary_char], new_text_fmt) + para.text[boundary_char:])
+                                self.replace_para_text_preserving_runs(
+                                    para,
+                                    para.text[:boundary_char].replace(para.text[:boundary_char], new_text_fmt)
+                                    + para.text[boundary_char:],
+                                )
                             elif p_norm.endswith(target_norm):
                                 boundary_char = len(para.text) - len(" ".join(para_words[-words_count:]))
                                 self.replace_para_text_preserving_runs(para, para.text[:boundary_char] + new_text_fmt)
@@ -191,7 +197,7 @@ class CVUpdater:
                 if ratio > best_ratio:
                     best_ratio = ratio
                     best_para = para
-            
+
             if best_ratio >= 0.80 and best_para is not None:
                 self.replace_para_text_preserving_runs(best_para, new_text_fmt)
                 return True
@@ -201,9 +207,11 @@ class CVUpdater:
         target = output_path if output_path else self.file_path
         self.doc.save(target)
 
+
 if __name__ == "__main__":
     # Test the updater (requires a sample docx in cvs/)
     import os
+
     test_file = "cvs/test_cv.docx"
     if os.path.exists(test_file):
         updater = CVUpdater(test_file)
