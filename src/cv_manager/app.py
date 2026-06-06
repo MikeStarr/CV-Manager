@@ -245,6 +245,7 @@ def main():
             elif not cv_files:
                 st.error("No CV templates found to work with.")
             else:
+                assert selected_cv is not None
                 # Clear previous session state on new generation
                 st.session_state["tailored_raw_response"] = None
                 st.session_state["tailored_diff"] = None

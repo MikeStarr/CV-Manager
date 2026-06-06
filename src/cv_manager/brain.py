@@ -68,7 +68,7 @@ def generate_cv_content(
             temperature=0,
             timeout=target_timeout,
         )
-        return response.choices[0].message.content
+        return response.choices[0].message.content or ""
     except Exception as e:
         logger.error(f"LLM request failed using provider {provider}: {e}")
         raise ConnectionError(
@@ -81,9 +81,9 @@ class CVBrain:
 
     def __init__(
         self,
-        api_key: str = None,
-        base_url: str = None,
-        model: str = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        model: str | None = None,
         timeout: float = 60.0,
         provider: str = "Local",
     ):
@@ -411,16 +411,17 @@ class CVBrain:
 
         lines: list[str] = []
         for upd in updates:
-            original = upd.get("original_text", "")
-            new = upd.get("new_text", "")
-            diff = difflib.unified_diff(
-                [original + "\n"],
-                [new + "\n"],
-                fromfile="src/cv_manager/data/CvContent.md",
-                tofile="src/cv_manager/data/CvContent.md",
-                lineterm="",
-            )
-            lines.extend(diff)
+            if isinstance(upd, dict):
+                original = upd.get("original_text", "")
+                new = upd.get("new_text", "")
+                diff = difflib.unified_diff(
+                    [original + "\n"],
+                    [new + "\n"],
+                    fromfile="src/cv_manager/data/CvContent.md",
+                    tofile="src/cv_manager/data/CvContent.md",
+                    lineterm="",
+                )
+                lines.extend(diff)
         return "\n".join(lines) if lines else "No changes detected."
 
 
