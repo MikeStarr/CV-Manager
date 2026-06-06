@@ -107,8 +107,7 @@ jobs:
           echo '## Coverage Report' >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           uv run coverage report | tee -a $GITHUB_STEP_SUMMARY
-          echo '
-```' >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
 
   all-checks-pass:
     name: All checks pass
