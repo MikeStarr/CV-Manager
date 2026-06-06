@@ -1,14 +1,3 @@
-from __future__ import annotations
-
-# Ensure the project root is on ``sys.path`` so that ``cv_manager`` can be imported.
-import os
-import sys
-
-root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-if root not in sys.path:
-    sys.path.insert(0, root)
-
-
 """Unit tests for helper functions in :mod:`src.cv_manager.app`.
 
 Only the pure‑Python helpers are exercised – ``get_docx_text`` and
@@ -16,13 +5,18 @@ Only the pure‑Python helpers are exercised – ``get_docx_text`` and
 Streamlit environment, so it is intentionally omitted from this suite.
 """
 
+from __future__ import annotations
+
+import os
 import sys
-import types
 from unittest.mock import MagicMock
 
-# Import the module under test.  The package is added to ``sys.path`` by the
-# application itself, but importing it directly keeps the intent clear.
-import src.cv_manager.app as app
+# Ensure the project root is on ``sys.path`` so that ``cv_manager`` can be imported.
+root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if root not in sys.path:
+    sys.path.insert(0, root)
+
+import src.cv_manager.app as app  # noqa: E402
 
 
 def test_get_docx_text(monkeypatch):
@@ -61,57 +55,6 @@ def test_get_cv_files(tmp_path, monkeypatch):
     monkeypatch.setattr(app, "CV_DIR", str(cv_dir))
     files = app.get_cv_files()
     assert sorted(files) == ["template1.docx"]
-
-
-"""Unit tests for helper functions in :mod:`src.cv_manager.app`.
-
-Only the pure‑Python helpers are exercised – ``get_docx_text`` and
-``get_cv_files``.  The UI logic inside :func:`main` is not testable without a
-Streamlit environment, so it is intentionally omitted from this suite.
-"""
-
-
-def test_get_docx_text(monkeypatch):
-    """Verify that ``get_docx_text`` preserves bold and italic markers.
-
-    The function relies on :class:`docx.Document`.  We monkey‑patch the class to
-    return a controlled structure of paragraphs and runs.
-    """
-
-    # Create a fake document with two paragraphs.
-    paragraph1 = MagicMock()
-    run_a = MagicMock(text="Hello", bold=True, italic=False)
-    run_b = MagicMock(text="World", bold=False, italic=True)
-    paragraph1.runs = [run_a, run_b]
-
-    paragraph2 = MagicMock()
-    run_c = MagicMock(text="Foo", bold=False, italic=False)
-    paragraph2.runs = [run_c]
-
-    fake_doc = MagicMock(paragraphs=[paragraph1, paragraph2])
-    monkeypatch.setattr(app, "Document", lambda _: fake_doc)
-
-    result = app.get_docx_text("dummy.docx")
-    # Expected: *Hello* _World_\nFoo
-    assert result == "*Hello*_World_\nFoo"
-
-
-def test_get_cv_files(tmp_path, monkeypatch):
-    """Ensure that only ``.docx`` files are returned and temporary files are ignored."""
-
-    # Create a temporary directory mimicking the CV_DIR.
-    cv_dir = tmp_path / "cvs"
-    cv_dir.mkdir()
-    # Create some test files
-    (cv_dir / "template1.docx").write_text("dummy")
-    (cv_dir / "~temp.docx").write_text("tmp")
-    (cv_dir / "readme.md").write_text("ignore")
-
-    # Monkeypatch the global CV_DIR to point at our temp dir.
-    monkeypatch.setattr(app, "CV_DIR", str(cv_dir))
-    files = app.get_cv_files()
-    assert sorted(files) == ["template1.docx"]
-
 
 # The ``load_registry`` helper is defined inside :func:`main` and therefore not
 # importable from the module namespace.  Testing it directly would require

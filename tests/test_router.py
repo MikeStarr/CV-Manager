@@ -77,6 +77,7 @@ def test_cv_brain_strips_section_prefixes():
 
     updates = brain.generate_tailored_content(job_spec="test", cv_structure=cv_structure, cv_content_md="")
 
+    assert isinstance(updates, list)
     assert len(updates) == 2
     assert updates[0]["original_text"] == "Digital Delivery Manager"
     assert updates[0]["new_text"] == "Project Manager"
@@ -114,6 +115,7 @@ def test_cv_brain_flexible_matching():
 
     updates = brain.generate_tailored_content(job_spec="test", cv_structure=cv_structure, cv_content_md="")
 
+    assert isinstance(updates, list)
     assert len(updates) == 2
     assert "LSEG" in updates[0]["original_text"]
     assert "PRINCE2" in updates[1]["original_text"]

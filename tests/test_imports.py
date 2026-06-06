@@ -5,9 +5,9 @@ import sys
 sys.path.append(os.path.join(os.getcwd(), "src"))
 
 try:
-    from cv_manager.brain import CVBrain
-    from cv_manager.parser.cv_parser import CVParser
-    from cv_manager.parser.cv_updater import CVUpdater
+    from cv_manager.brain import CVBrain  # noqa: F401
+    from cv_manager.parser.cv_parser import CVParser  # noqa: F401
+    from cv_manager.parser.cv_updater import CVUpdater  # noqa: F401
 
     print("✅ All modules imported successfully!")
 except ImportError as e:

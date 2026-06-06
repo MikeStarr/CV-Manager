@@ -1,5 +1,6 @@
 import streamlit as st
 
+
 def apply_styles():
     """
     Injects Apple-inspired CSS styling into the Streamlit app.
@@ -9,7 +10,9 @@ def apply_styles():
     <style>
         /* Typography */
         html, body, [class*="css"] {
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display",
+                         "SF Pro Text", "Segoe UI", Roboto, Oxygen, Ubuntu,
+                         Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
         }
 
         /* Background */
@@ -65,7 +68,8 @@ def apply_styles():
             background-color: #0058B0;
         }
 
-        /* Secondary Button Style Simulation via specific class mapping (Streamlit uses kind="secondary" but styling is tricky) */
+        /* Secondary Button Style Simulation via specific class mapping
+           (Streamlit uses kind="secondary" but styling is tricky) */
         /* For standard secondary buttons, we'll try to target them if Streamlit allows,
            but typically we use a white background with a gray border. */
         div[data-testid="stBaseButton-secondary"] > button {

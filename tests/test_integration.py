@@ -8,9 +8,9 @@ import pytest
 def test_module_imports():
     """Verify that modules can be imported without manual sys.path manipulation."""
     try:
-        import cv_manager
-        from cv_manager.brain import CVBrain
-        from cv_manager.parser import cv_parser, cv_updater
+        import cv_manager  # noqa: F401
+        from cv_manager.brain import CVBrain  # noqa: F401
+        from cv_manager.parser import cv_parser, cv_updater  # noqa: F401
     except ImportError as e:
         pytest.fail(f"Module import failed: {e}")
 
@@ -44,6 +44,7 @@ def test_streamlit_app_runnable():
     error_found = False
     output = ""
 
+    assert process.stdout is not None
     while time.time() - start_time < 15:  # 15 seconds timeout
         line = process.stdout.readline()
         if not line:

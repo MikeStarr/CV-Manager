@@ -1,4 +1,5 @@
 # Ensure the src directory is on PYTHONPATH so imports work when running via streamlit
+# ruff: noqa: E402
 import os
 import sys
 

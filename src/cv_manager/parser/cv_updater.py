@@ -154,7 +154,7 @@ class CVUpdater:
                     matcher = difflib.SequenceMatcher(None, p_norm, para.text.lower())
                     start_char = -1
                     end_char = -1
-                    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+                    for tag, i1, i2, j1, _j2 in matcher.get_opcodes():
                         if tag == "equal":
                             if i1 <= idx < i2:
                                 start_char = j1 + (idx - i1)

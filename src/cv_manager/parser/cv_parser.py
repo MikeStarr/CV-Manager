@@ -9,6 +9,7 @@ so that the caller can handle it gracefully.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 try:
     from docx import Document
@@ -26,11 +27,6 @@ def load_cv_text(file_path: str | Path) -> str:
     """
     doc = Document(str(file_path))
     return "\n".join(p.text for p in doc.paragraphs)
-
-
-from typing import Any
-
-from docx import Document
 
 
 class CVParser:
@@ -62,7 +58,7 @@ class CVParser:
                 is_heading = False
                 style_name = "Normal"
 
-            elements.append({"text": text, "style": para.style.name, "is_heading": is_heading})
+            elements.append({"text": text, "style": style_name, "is_heading": is_heading})
         return elements
 
 
