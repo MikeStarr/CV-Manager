@@ -9,7 +9,6 @@ so that the caller can handle it gracefully.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Iterable
 
 try:
     from docx import Document  # type: ignore
@@ -29,8 +28,10 @@ def load_cv_text(file_path: str | Path) -> str:
     return "\n".join(p.text for p in doc.paragraphs)
 
 
+from typing import Any
+
 from docx import Document
-from typing import List, Dict, Any
+
 
 class CVParser:
     """Parses a .docx CV to extract its structural elements."""
@@ -39,14 +40,14 @@ class CVParser:
         self.file_path = file_path
         self.doc = Document(file_path)
 
-    def parse(self) -> List[Dict[str, Any]]:
+    def parse(self) -> list[dict[str, Any]]:
         """
-    Parses the document and returns a list of paragraphs with their styles.
-    Each dict contains:
-    - text: The text content of the paragraph
-    - style: The style name applied to the paragraph
-    - is_heading: Boolean indicating if it's a heading
-    """
+        Parses the document and returns a list of paragraphs with their styles.
+        Each dict contains:
+        - text: The text content of the paragraph
+        - style: The style name applied to the paragraph
+        - is_heading: Boolean indicating if it's a heading
+        """
         elements = []
         for para in self.doc.paragraphs:
             text = para.text.strip()
@@ -56,16 +57,14 @@ class CVParser:
             # Simple heuristic for headings: check if style name contains 'Heading'
             is_heading = "Heading" in para.style.name
 
-            elements.append({
-                "text": text,
-                "style": para.style.name,
-                "is_heading": is_heading
-            })
+            elements.append({"text": text, "style": para.style.name, "is_heading": is_heading})
         return elements
+
 
 if __name__ == "__main__":
     # Test the parser (requires a sample docx in cvs/)
     import os
+
     test_file = "cvs/test_cv.docx"
     if os.path.exists(test_file):
         parser = CVParser(test_file)

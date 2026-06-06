@@ -24,6 +24,27 @@ API documentation is auto-generated from docstrings using [mkdocstrings](https:/
 
 Docs deploy automatically on push to `main` via GitHub Actions. To enable this, go to your repo's Settings > Pages and set the source to **GitHub Actions**.
 
+## Cloud LLM Configuration
+
+CV Manager supports local LLM execution (default) as well as cloud overrides via DeepSeek and Grok.
+
+### 1. Configure API Keys
+To use a cloud provider, create a `.env` file at the root of the project (you can copy `.env.example` as a template) and add your API keys:
+
+```env
+# DeepSeek API Key (from https://platform.deepseek.com/)
+DEEPSEEK_API_KEY=your_deepseek_api_key
+
+# Grok API Key (from https://console.x.ai/)
+XAI_API_KEY=your_grok_api_key
+```
+
+### 2. Using Cloud LLMs in the UI
+1. Launch the Streamlit application.
+2. In the left-hand configuration sidebar, locate the **LLM Provider & Settings** section.
+3. Use the **Select LLM Provider** dropdown to select either **Local**, **DeepSeek**, or **Grok**.
+4. The application will automatically configure the appropriate API endpoint, model, and safely load the corresponding API key from your `.env` file. You can also customize the request timeout limit.
+
 ## Development
 
 To set up for local development:

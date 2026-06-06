@@ -1,0 +1,6 @@
+typer
+rich
+python-docx
+streamlit
+openai
+python-dotenv

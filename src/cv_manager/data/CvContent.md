@@ -5,9 +5,11 @@
 
 ### Option A: The Transformation & AI Leader (Focus: AI, Business Transformation & Process)
 > Senior Project Manager | AI & Business Transformation Lead. Expert in guiding the end-to-end delivery lifecycle of enterprise application ecosystems, bridging the gap between Technical Engineering, Architecture, and Business Operations. Proven track record of establishing rigorous PMO governance, executing vendor selections, and implementing structured adoption frameworks for global user bases.
+> Senior Technical Programme Manager | AI & Business Transformation Lead. Expert in guiding the end-to-end delivery lifecycle of enterprise application ecosystems, bridging the gap between Technical Engineering, Architecture, and Business Operations. Proven track record of establishing rigorous PMO governance, executing vendor selections, and implementing structured adoption frameworks for global user bases.
 
 ### Option B: The SaaS & GTM Specialist (Focus: Commercials, Product & Revenue)
 > Senior Project Manager with over 15 years’ experience driving enterprise-scale GTM and SaaS platform initiatives. Expert in managing the full lifecycle of complex commercial ecosystems, bridging the gap between Product, Commercial Stakeholders, and Engineering. Proven track record in delivery of flagship SaaS products, ensuring commercial readiness and platform stability for global user bases of 300k+.
+> Senior Technical Programme Manager with over 15 years’ experience driving enterprise-scale GTM and SaaS platform initiatives. Expert in managing the full lifecycle of complex commercial ecosystems, bridging the gap between Product, Commercial Stakeholders, and Engineering. Proven track record in delivery of flagship SaaS products, ensuring commercial readiness and platform stability for global user bases of 300k+.
 
 ### Option C: The Programme & Infrastructure Lead (Focus: Large-scale Rollouts & Resilience)
 > Technical Programme Manager. Expert in leading large-scale software platform deployments, infrastructure migrations, and multi-team rollouts within tier-one financial market institutions. Accountable for accelerating delivery velocity, managing £20M+ allocations, and establishing rigorous portfolio governance to mitigate operational and third-party risk.
