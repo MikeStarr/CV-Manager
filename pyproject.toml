@@ -41,6 +41,7 @@ lint = [
 test = [
     "coverage",
     "pytest",
+    "pytest-mock>=3.15.1",
 ]
 typecheck = [
     "ty",

@@ -7,7 +7,6 @@ made and a deterministic response is returned.
 
 import json
 from types import SimpleNamespace
-from unittest.mock import MagicMock
 
 import pytest
 
@@ -21,11 +20,7 @@ def _mock_response(content: str):
     simple nested namespace that provides this attribute chain.
     """
 
-    return SimpleNamespace(
-        choices=[
-            SimpleNamespace(message=SimpleNamespace(content=content))
-        ]
-    )
+    return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=content))])
 
 
 @pytest.fixture
@@ -37,12 +32,15 @@ def brain(monkeypatch):
     """
 
     brain = CVBrain()
+
     # Patch the client so no real HTTP request is made.
     def _create(*_, **__):
-        content = json.dumps([
-            {"original_text": "I know Python", "new_text": "Proficient in Python"},
-            {"original_text": "FastAPI", "new_text": "Experience with FastAPI"},
-        ])
+        content = json.dumps(
+            [
+                {"original_text": "I know Python", "new_text": "Proficient in Python"},
+                {"original_text": "FastAPI", "new_text": "Experience with FastAPI"},
+            ]
+        )
         return _mock_response(content)
 
     monkeypatch.setattr(brain.client.chat.completions, "create", _create)
