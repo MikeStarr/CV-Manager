@@ -6,7 +6,6 @@ the repository – this keeps the tests lightweight and avoids hard‑coding a
 large document into the repo.
 """
 
-import os
 from pathlib import Path
 
 import pytest
