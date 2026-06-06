@@ -201,8 +201,9 @@ class CVUpdater:
             if best_ratio >= 0.80 and best_para is not None:
                 self.replace_para_text_preserving_runs(best_para, new_text_fmt)
                 return True
+        return False
 
-    def save(self, output_path: str = None):
+    def save(self, output_path: str | None = None):
         """Saves the modified document."""
         target = output_path if output_path else self.file_path
         self.doc.save(target)

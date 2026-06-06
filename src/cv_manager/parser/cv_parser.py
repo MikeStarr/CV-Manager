@@ -11,7 +11,7 @@ from __future__ import annotations
 from pathlib import Path
 
 try:
-    from docx import Document  # type: ignore
+    from docx import Document
 except Exception as exc:  # pragma: no cover - defensive
     raise RuntimeError("python-docx is required to read CV files") from exc
 
@@ -55,7 +55,12 @@ class CVParser:
                 continue
 
             # Simple heuristic for headings: check if style name contains 'Heading'
-            is_heading = "Heading" in para.style.name
+            if para.style is not None:
+                is_heading = "Heading" in para.style.name
+                style_name = para.style.name
+            else:
+                is_heading = False
+                style_name = "Normal"
 
             elements.append({"text": text, "style": para.style.name, "is_heading": is_heading})
         return elements

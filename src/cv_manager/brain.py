@@ -68,7 +68,7 @@ def generate_cv_content(
             temperature=0,
             timeout=target_timeout,
         )
-        return response.choices[0].message.content
+        return response.choices[0].message.content or ""
     except Exception as e:
         logger.error(f"LLM request failed using provider {provider}: {e}")
         raise ConnectionError(
@@ -81,9 +81,9 @@ class CVBrain:
 
     def __init__(
         self,
-        api_key: str = None,
-        base_url: str = None,
-        model: str = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        model: str | None = None,
         timeout: float = 60.0,
         provider: str = "Local",
     ):
@@ -164,7 +164,7 @@ class CVBrain:
         cv_text_lines: list[str] = []
         current_section = "General"
         for elem in cv_structure:
-            style = elem.get("style", "")
+            elem.get("style", "")
             is_heading = elem.get("is_heading", False)
             text = elem.get("text", "")
             if not text:
@@ -241,7 +241,7 @@ class CVBrain:
         # Handle different possible structures returned by the model
         if isinstance(data, dict):
             updates = []
-            for key, val in data.items():
+            for _key, val in data.items():
                 if isinstance(val, list):
                     updates = val
                     break
@@ -319,8 +319,6 @@ class CVBrain:
                 found = True
             # 3. Check if there's a highly similar paragraph (>= 80% similarity)
             if not found and len(orig_norm) >= 15:
-                import difflib
-
                 for p_norm in cv_paras_norm:
                     if difflib.SequenceMatcher(None, orig_norm, p_norm).ratio() >= 0.80:
                         found = True
@@ -413,16 +411,17 @@ class CVBrain:
 
         lines: list[str] = []
         for upd in updates:
-            original = upd.get("original_text", "")
-            new = upd.get("new_text", "")
-            diff = difflib.unified_diff(
-                [original + "\n"],
-                [new + "\n"],
-                fromfile="src/cv_manager/data/CvContent.md",
-                tofile="src/cv_manager/data/CvContent.md",
-                lineterm="",
-            )
-            lines.extend(diff)
+            if isinstance(upd, dict):
+                original = upd.get("original_text", "")
+                new = upd.get("new_text", "")
+                diff = difflib.unified_diff(
+                    [original + "\n"],
+                    [new + "\n"],
+                    fromfile="src/cv_manager/data/CvContent.md",
+                    tofile="src/cv_manager/data/CvContent.md",
+                    lineterm="",
+                )
+                lines.extend(diff)
         return "\n".join(lines) if lines else "No changes detected."
 
 

@@ -367,7 +367,7 @@ def test_extract_ats_keywords_fallback():
 
     try:
         brain.extract_ats_keywords("Python AWS CI/CD Scrum Leadership")
-        assert False, "Expected ConnectionError to be raised"
+        raise AssertionError("Expected ConnectionError to be raised")
     except ConnectionError as e:
         assert "Could not connect to LLM server" in str(e)
 
